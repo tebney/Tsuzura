@@ -1,0 +1,90 @@
+{
+  "lastUpdated": "30 September 2026",
+  "introduction": "Tansu is a decentralized governance platform operated by Consulting Manao GmbH, Söding-Sankt Johann, Austria. By using our dApp, you agree to be bound by these Terms of Service.",
+  "importantNotice": "The dApp runs in your browser and reads the Stellar blockchain, IPFS and git hosts directly. We keep no user database; the upload service we run puts your files on IPFS. We recommend reading our Privacy Policy alongside these Terms.",
+  "sections": {
+    "keyPoints": [
+      {
+        "title": "Age Requirement",
+        "content": "You must be at least 18 years old to use our services."
+      },
+      {
+        "title": "Free Service",
+        "content": "Tansu is provided free of charge. Users only pay blockchain transaction fees."
+      },
+      {
+        "title": "Wallet Required",
+        "content": "You must use a third-party Stellar wallet to authenticate your account."
+      },
+      {
+        "title": "Content Responsibility",
+        "content": "You are solely responsible for all content you upload to IPFS."
+      },
+      {
+        "title": "Reporting Illegal Content",
+        "content": "We host the files you upload. Report content you consider illegal to legal@consulting-manao.com, in German or English. A person reviews each report and tells you the outcome."
+      },
+      {
+        "title": "Collateral System",
+        "content": "Proposals require collateral, reimbursed to the proposer upon successful execution."
+      },
+      {
+        "title": "No Advice",
+        "content": "Tansu is a governance tool. Nothing in it is financial, investment, tax or legal advice."
+      },
+      {
+        "title": "Austrian Law",
+        "content": "These Terms are governed by Austrian law. The courts of Graz have jurisdiction as far as the law allows; consumers keep the mandatory protections of their country of residence."
+      },
+      {
+        "title": "Changes",
+        "content": "A change to these Terms applies from the day it is published. If you do not accept it, stop using the service."
+      }
+    ],
+    "importantRisks": [
+      {
+        "title": "Blockchain Risks",
+        "content": "Transactions are permanent and cannot be reversed. Cryptocurrency prices fluctuate significantly."
+      },
+      {
+        "title": "IPFS Content",
+        "content": "Content uploaded to IPFS is public and permanent. It remains accessible even if unlinked from our platform."
+      },
+      {
+        "title": "Anonymous Voting",
+        "content": "Lost private keys prevent vote decryption and proposal execution. No recovery mechanism exists."
+      },
+      {
+        "title": "No Recourse",
+        "content": "Lost keys, failed transactions and errors on the blockchain cannot be reversed."
+      }
+    ],
+    "yourResponsibilities": [
+      "Use services in compliance with Austrian law and these Terms",
+      "Secure your wallet and private keys",
+      "Provide accurate information when using our services",
+      "Ensure uploaded content complies with laws and doesn't infringe on others' rights",
+      "Do not upload illegal, harmful, or inappropriate content",
+      "Do not attempt to compromise platform security",
+      "Do not engage in fraudulent or deceptive practices"
+    ],
+    "serviceModifications": {
+      "description": "We reserve the right to modify, suspend, or discontinue the dApp at any time. We may upgrade smart contracts for feature additions, bug fixes, security updates, compliance updates, and performance optimization.",
+      "administrativeRights": "We may take administrative actions including project deletion, proposal cancellation, member suspension, and data corrections to enforce Terms, ensure security, or comply with legal requirements."
+    },
+    "limitationsOfLiability": [
+      "We do not guarantee continuous, uninterrupted access to our services",
+      "Our services depend on third-party systems beyond our control",
+      "We provide services \"as is\", without warranties, as far as the law allows",
+      "Consulting Manao GmbH is liable only where the law does not allow its liability to be excluded: for intent, gross negligence, personal injury and under product liability law",
+      "We are not liable for user-generated content stored on IPFS or blockchain, except where required by applicable law"
+    ],
+    "contactInformation": {
+      "company": "Consulting Manao GmbH",
+      "details": "Commercial register (Firmenbuch): FN 571029z, Landesgericht für ZRS Graz\nVAT ID: ATU77780135\nManaging Director: Dr. DI Pamphile Tupui Christophe Roy",
+      "address": "Köppling 35, 8565 Söding-Sankt Johann, Austria",
+      "email": "legal@consulting-manao.com",
+      "website": "consulting-manao.com"
+    }
+  }
+}

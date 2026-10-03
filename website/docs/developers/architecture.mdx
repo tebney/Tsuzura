@@ -1,0 +1,139 @@
+---
+sidebar_position: 1
+---
+
+# Architecture
+
+![General diagram flow](/assets/docs/architecture.png)
+
+:::note[Maintainer]
+
+A person which is part of a project's team. This is not necessarily tight to any specific role nor commit rights.
+
+:::
+
+## System Overview
+
+1. Using the dApp, a maintainer registers a project providing a unique name, some metadata and a list of maintainers.
+2. The project's registration triggers an event which can be listened to by anyone on the network. The dApp reads current state directly from the contract and fetches off-chain content from IPFS;
+3. Either using the dApp, or from tools provided to directly call the contract, maintainers can update project data. Most notably, the last commit hash and external evidence pointers for specific commits;
+4. Users can use the dApp to easily get insights on a project. They see the project history, can click on specific commits to have more information and link to the centralized platform used by the project itself.
+
+## Soroban Contract
+
+The Soroban contract handles all on-chain features of the projects from registration, administration, to pushing new code versions.
+
+When maintainers register their projects, a unique hash based on the project name is created. This serves as a `project_key` to uniquely identify a project and is stored as a data entry on the ledger.
+
+Behind the scene, registration takes a **5 XLM deposit** (via the configured collateral token) and checks that the project name is unique on-chain. The deposit is not returned: it is the price of a unique name and keeps name squatting costly. See [Spam and Sybil resistance](./governance.mdx#spam-and-sybil-resistance) for how deposits and voting weight fit together.
+
+Each project stores these elements on-chain:
+
+- a commit hash: the last commit hash which was set by a maintainer;
+- generic commit evidence: optional IPFS CIDs for SBOMs, CVE scan reports, and attestations scoped to a project, commit hash, and evidence kind;
+- a list of maintainers: authorized maintainers who can administer the project. They can update everything besides the project name itself;
+- the hash of a configuration file and its location: similar to a Stellar info file, as described in SEP-1. It defines meta information such as a more digestible list of maintainers, official resources for a project, etc;
+- maintainers' [attestations](./code_finality.mdx) of commits and evidence, and whether each target has reached finality;
+- optional governance settings: minimum voting period, execution delay and attestation finality threshold;
+- optional sub-projects, for organizations grouping several projects.
+
+Maintainers can call the contract to update the commit hash as they develop their code. This contract call triggers an event containing the project_key and the commit hash.
+
+Maintainers can also attach generic evidence to a specific commit. The contract stores only a CID and intentionally does not parse SBOM, CVE, or attestation contents on-chain.
+
+Everyone can get a project's commit hash or commit evidence at any time by either making a simulation or even making a cross-contract call.
+
+## Smart Contract Features
+
+### Core Functions
+
+- **Project Management**: Registration, updates, per-project governance settings and sub-projects
+- **Versioning**: Commit hashes, commit evidence (SBOM, CVE, attestation artifacts) and [code finality](./code_finality.mdx) through maintainer attestations
+- **Governance**: Proposal creation, voting, conflict-of-interest lists, moderation, and execution with optional [outcome contracts](./governance.mdx#acting-on-other-contracts)
+- **Membership**: Member registration, Git identity binding and badge management
+- **Anonymous Voting**: BLS12-381 cryptographic voting system
+
+### Security Features
+
+- **Access Control**: Role-based permissions for maintainers
+- **Input Validation**: Comprehensive validation of all contract inputs
+- **Event Emission**: All state changes emit verifiable events
+- **Upgrade Mechanism**: Multi-admin upgrades: an admin proposes a new WASM hash, other admins approve, and the upgrade is finalized after a timelock
+- **Pause**: Admins can pause state-changing calls in an emergency
+
+### Event System
+
+The contract emits events for all state changes:
+
+**Project Events:**
+
+- `ProjectRegistered` - New project created
+- `ProjectConfigUpdated` - Metadata or maintainers changed
+- `ProjectGovernanceUpdated` - Minimum voting period or execution delay changed (or queued)
+- `Commit` - New commit hash set
+- `EvidenceSet` - Evidence pointer set for a project commit and evidence kind
+- `SubProjectsUpdated` - Sub-projects added or changed
+
+**Code Finality Events:**
+
+- `Attested` - Maintainer attested a commit or evidence artifact
+- `AttestationRevoked` - Maintainer revoked an attestation
+- `AttestationThresholdSet` - Finality threshold changed
+
+**Governance Events:**
+
+- `AnonymousVotingSetup` - Anonymous voting configured
+- `ProposalCreated` - New proposal submitted
+- `VoteCast` - Vote recorded
+- `VoteRemoved` - Vote removed by a maintainer
+- `ConflictOfInterestUpdated` - Conflict-of-interest list changed
+- `ProposalExecuted` - Proposal finalized, or revoked (status `Malicious`)
+
+**Membership Events:**
+
+- `MemberAdded` - New member registered
+- `MemberUpdated` - Member metadata or Git identity changed
+- `BadgesUpdated` - Badges assigned/updated
+- `NqgContractSet` - A project's NQG contract set or cleared
+
+**Admin Events:**
+
+- `ContractPaused` - Contract paused or unpaused
+- `ContractUpdated` - Outcome executor changed
+- `UpgradeProposed` - Contract upgrade proposed
+- `UpgradeApproved` - Upgrade approval recorded
+- `UpgradeStatus` - Upgrade executed or cancelled
+
+Events can be observed directly from the chain. The current dApp does not require an event indexer, backend API, or database to read project state.
+
+## Backend-less Infrastructure
+
+The dApp talks directly to Stellar RPC for contract reads and writes. Off-chain content is content-addressed and fetched from IPFS by CID, so there is no application database for project, proposal, profile, or evidence data.
+
+Git hooks automate commit tracking. Upon specific Git actions, maintainers trigger hooks that call the contract to update the commit hash. Future enhancements will warn users of hash mismatches.
+
+## IPFS Integration
+
+Tansu uses IPFS for decentralized content storage:
+
+- **Proposal Content**: Descriptions, outcomes and discussion snapshots (see [Proposal IPFS directory](./governance.mdx#proposal-ipfs-directory))
+- **Member Profiles**: Profile images and biographical information
+- **Project Metadata**: Configuration files and documentation
+- **Commit Evidence**: SBOMs, CVE scans and attestation bundles
+- **Content Addressing**: Immutable content hashes for verification
+
+The dApp packs content into a CAR file and sends it, together with the user's signed transaction, to a small delegation worker. The worker verifies the transaction signature and recomputes the CAR's root CID to check it matches, then pins the content on Filebase (optionally mirrored on Pinata). It holds the pinning credentials so the browser never does.
+
+The dApp reads content through the Filebase gateway. Content under a CID never changes, so a file read once is kept in the browser's IndexedDB with the dApp's other reads, and later visits show it at once. A URL the gateway answers for good (no node provides the CID, or the file is missing) is remembered for 24 hours in `localStorage` (`tansu_ipfs_misses_v1`), so it is not requested on every visit; uploading a CID forgets its entries. Project lists render as soon as the contract answers, and each card fills in once its `tansu.toml` arrives.
+
+## dApp
+
+The dApp provides essential project management features.
+
+Built with Astro and `stellar-wallets-kit`. The dApp is fully non-custodial and never accesses private keys.
+
+Maintainers can handle all aspects of their projects: add or remove maintainers, update metadata and governance settings, set commit hashes, attach evidence and attest commits, grant badges, and run proposals from creation to execution.
+
+Users can view project details and current state, join as members, vote, and donate. Each commit hash links to the project's code repository. The metadata file (similar to SEP-1) renders project information.
+
+The interface clearly shows data sources for both on-chain and off-chain information.

@@ -1,0 +1,214 @@
+# Contributing
+
+Welcome to our community! Thank you for taking the time to read the following.
+
+## TL;DR
+
+- All code should have tests.
+- All code should be documented.
+- No changes are ever committed without review and approval.
+
+## AI tool use policy
+
+We follow the policy set by the LLVM project:
+
+https://llvm.org/docs/AIToolPolicy.html
+
+The core principle is that a human must be in the loop at all time and contributors are
+solely responsible for their contributions.
+
+## Project management
+
+Current BDFL: Pamphile Tupui Roy `@tupui`
+
+- _radicle_ is primarily used. _github_ only serves as a mirror.
+- For a patch to be integrated, it must be approved at least by one core team member.
+- Development discussions happen on Discord but any request **must** be formalized in _radicle_ (if really necessary on
+  _github_). This ensures a common
+  history.
+- When making a PR on _github_, Continuous Integration is provided by _Github actions_ and configuration is located at
+  `.github/workflows`.
+- Netlify is also providing some CI and is useful for all dApp related changes.
+
+## Code
+
+### Local development
+
+After cloning the repository, see the various Makefiles.
+
+*For IPFS uploads via Filebase, see the guide at `dapp/workers/ipfs-delegation/README.md` for setup instructions.
+You only need to configure this if you're working on the IPFS delegation worker itself.*
+
+### Testing
+
+Testing your code is paramount. Without continuous integration, we **cannot**
+guaranty the quality of the code. Some minor modification on a function can
+have unexpected implications. With a single commit, everything can go south!
+The `main` branch is always on a passing state: CI is green, working code,
+and an installable Python package.
+
+> Tests will be automatically launched when you will push your branch to
+> GitHub. Be mindful of this resource!
+
+### Linter
+
+Apart from normal unit and integration tests, you can perform a static
+analysis of the code using black and ruff for Python, prettier for JS/MD/MDX and standard Rust formatters.
+
+This allows to spot naming errors for example as well as other style errors.
+
+## GIT
+
+### Workflow
+
+The development model is based on the Cactus Model also called
+[Trunk Based Development](https://trunkbaseddevelopment.com) model.
+More specifically, we use the Scaled Trunk-Based Development model.
+
+> Some additional ressources:
+> [gitflow](https://nvie.com/posts/a-successful-git-branching-model/),
+> [gitflow critique](https://barro.github.io/2016/02/a-succesful-git-branching-model-considered-harmful/),
+> [Radicle Patch](https://radicle.dev/guides/user#working-with-patches)
+> [GitHub PR](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-request-merges).
+
+It means that **each** new feature has to go through a new branch. Why?
+For peer review. Pushing directly on the develop without review should be
+exceptional (hotfix)!
+
+This project is using pre-commit hooks. So you have to set it up like this:
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+When you try to commit your changes, it will launch the pre-commit hooks
+(`.pre-commit-config.yaml`)
+and modify the files if there are any changes to be made for the commit to be
+accepted. If you don't use this feature and your changes are not compliant
+(linter), CI will fail.
+
+### Recipe for new feature
+
+If you want to add a modification, create a new branch branching off `main`.
+Then you can create a patch on _radicle_ or if you want to make me sad,
+a merge request on _github_. From here, the fun begins.
+
+> For every commit you push, the linter and tests are launched.
+
+Your request will only be considered for integration if in a **finished** state:
+
+1. Respect Python/JS/Rust coding rules,
+2. Have tests regarding the changes,
+3. The branch passes all tests (current and new ones),
+4. Maintain test coverage,
+5. Have the respective documentation.
+
+#### Writing the commit message
+
+Commit messages should be clear and follow a few basic rules. Example:
+
+```bash
+   Add functionality X.
+
+   Lines shouldn't be longer than 72
+   characters.  If the commit is related to a ticket, you can indicate that
+   with "See #3456", "See ticket 3456", "Closes #3456", or similar.
+```
+
+Describing the motivation for a change, the nature of a bug for bug fixes or
+some details on what an enhancement does are also good to include in a commit
+message. Messages should be understandable without looking at the code
+changes. A commit message like `fixed another one` is an example of
+what not to do; the reader has to go look for context elsewhere.
+
+### Squash, rebase and merge
+
+Squash-merge is systematically used to maintain a linear history. It's
+important to check the message on the squash commit.
+
+## Deployment and release operations
+
+This section is the canonical reference for deployments. Keep deployment steps
+up to date here first.
+
+### Python release
+
+1. Update the version in the main `pyproject.toml`.
+2. Build locally using `hatch build`, and verify the content of the artifacts.
+3. Submit a PR, wait for tests to pass, and merge into `main`.
+4. Trigger the release workflow manually.
+5. Check that the release has been deployed to PyPI.
+
+### dApp (`dapp/`) deployment via Netlify
+
+The dApp can be deployed to two Netlify projects:
+
+- Staging: `https://testnet.tansu.dev` (`b637f4df-4886-4cc7-bc3b-6bfa12e6f351`)
+- Production: `https://app.tansu.dev` (`12f7130e-323b-42d5-b2cb-69df80676a79`)
+
+Automatic Netlify branch deploy sources:
+
+- Staging (`testnet.tansu.dev`): branch `main`.
+- Production (`app.tansu.dev`): branch `app_prod`.
+
+Locally we can test using the Netlify CLI:
+
+1. Link the local `dapp/` folder to the target Netlify project:
+    - Staging: `bun run netlify:link:staging`
+    - Production: `bun run netlify:link:production`
+2. Verify the active target: `bun run netlify:status`
+3. Deploy: `bun run netlify:deploy`
+
+Netlify UI settings required for cloud builds (both projects):
+
+- Base directory: `dapp`
+- Build command: `bun run build`
+- Publish directory: `dist`
+
+The build writes a service worker, `dist/sw.js`, that precaches the app. Once
+a deploy is live, an open tab keeps its version until the user clicks
+**Reload** on the "A new version is ready" card: this keeps a tab on one
+consistent version. Two settings keep that working:
+
+- `sw.js` must not be cached for long. Netlify's default
+  (`max-age=0, must-revalidate`) is right.
+- Keep skew protection on (the Astro Netlify adapter sets it up): the files an
+  open tab loads later, and does not have precached, stay reachable.
+
+Once on Netlify on production, the dApp can be deployed on IPFS:
+
+1. Trigger the dApp IPFS deployment workflow.
+2. Update the CID on the Tansu linked address. See https://xlm.sh/
+
+### Smart contract release and upgrade
+
+Contract artifacts are published by GitHub Actions on tag push:
+
+1. Ensure code is merged and stable on `main`.
+2. Create and push a tag matching `v*` (for example `v1.2.3`).
+3. Confirm `.github/workflows/contract-release.yml` completes and publishes the
+   release artifact.
+
+Then execute on-chain upgrade flow (see `Makefile` targets for exact commands):
+
+1. Build/upload the new WASM.
+2. Propose upgrade (`make contract_propose_upgrade network=<network>`).
+3. Approve upgrade (`make contract_approve_upgrade network=<network>`).
+4. Finalize upgrade (`make contract_finalize_upgrade network=<network>`).
+
+### Website (`website/`) deployment
+
+The website is built with Docusaurus. Validate before deployment:
+
+1. `cd website`
+2. `bun install --frozen-lockfile`
+3. `bun run build`
+
+Deployment is managed on Netlify. After publishing, verify the expected site
+and environment in the Netlify UI.
+
+### IPFS delegation worker deployment
+
+For worker setup and deployment instructions, use the existing guide at
+`dapp/workers/ipfs-delegation/README.md`.

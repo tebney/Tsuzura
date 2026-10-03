@@ -1,0 +1,127 @@
+name: dApp upload to IPFS
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ app_prod ]
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  ipds:
+    name: Publish dApp on IPFS
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+    environment:
+      name: dapp-ipfs
+    defaults:
+      run:
+        working-directory: ./dapp
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@670825a89dc0abd596e7a3abd0f5e3f6e5faf37c
+        with:
+          node-version: "latest"
+          package-manager-cache: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          no-cache: true
+
+      - name: Install App dependencies
+        run: bun install
+
+      - name: Build app
+        env:
+          PUBLIC_DELEGATION_API_URL: ${{ vars.PUBLIC_DELEGATION_API_URL }}
+          PUBLIC_SOROBAN_NETWORK_PASSPHRASE: ${{ vars.PUBLIC_SOROBAN_NETWORK_PASSPHRASE }}
+          PUBLIC_SOROBAN_RPC_URL: ${{ vars.PUBLIC_SOROBAN_RPC_URL }}
+          PUBLIC_STELLAR_REGISTRY_CONTRACT_ID: ${{ vars.PUBLIC_STELLAR_REGISTRY_CONTRACT_ID }}
+          PUBLIC_HORIZON_URL: ${{ vars.PUBLIC_HORIZON_URL }}
+          PUBLIC_TANSU_CONTRACT_ID: ${{ vars.PUBLIC_TANSU_CONTRACT_ID }}
+          PUBLIC_TANSU_OWNER_ID: ${{ vars.PUBLIC_TANSU_OWNER_ID }}
+        run: bun run build
+
+      - name: Generate artifact attestation for dist
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-path: "./dapp/dist/*"
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: dist
+          path: |
+            ./dapp/dist/*
+
+      - name: Install upload dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes jq
+
+      - name: Upload dApp to Filebase
+        id: filebase
+        env:
+          FILEBASE_TOKEN: ${{ secrets.FILEBASE_TOKEN }}
+        run: |
+          files=()
+          while IFS= read -r -d '' file; do
+            files+=("${file}")
+          done < <(find dist -type f -print0)
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No dApp files found in dist for Filebase upload" >&2
+            exit 1
+          fi
+
+          curl_args=(
+            --silent
+            --show-error
+            --fail
+            -X POST
+            -H "Authorization: Bearer ${FILEBASE_TOKEN}"
+            "https://rpc.filebase.io/api/v0/add?wrap-with-directory=true"
+          )
+
+          for file in "${files[@]}"; do
+            rel_path="${file#dist/}"
+            curl_args+=(-F "file=@${file};filename=${rel_path}")
+          done
+
+          FILEBASE_RESPONSE="$(curl "${curl_args[@]}")"
+          printf '%s\n' "${FILEBASE_RESPONSE}"
+
+          cid="$(printf '%s\n' "${FILEBASE_RESPONSE}" | jq -r '.Hash // .Cid // empty' | tail -n 1)"
+
+          if [ -z "${cid}" ]; then
+            echo "Unable to determine Filebase directory CID from upload response" >&2
+            exit 1
+          fi
+
+          {
+            echo "cid=${cid}"
+            echo "url=https://ipfs.io/ipfs/${cid}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Job summary
+        run: |
+          echo "### Shipping to IPFS! :rocket:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- CID: ${STEPS_FILEBASE_OUTPUTS_CID}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: ${STEPS_FILEBASE_OUTPUTS_URL}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          STEPS_FILEBASE_OUTPUTS_CID: ${{ steps.filebase.outputs.cid }}
+          STEPS_FILEBASE_OUTPUTS_URL: ${{ steps.filebase.outputs.url }}

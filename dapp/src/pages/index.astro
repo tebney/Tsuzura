@@ -1,0 +1,12 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/layout/Container.astro";
+import ProjectList from "../components/page/dashboard/ProjectList";
+---
+
+<!-- text-active text-rejected text-cancelled text-voted text-approved text-approve text-reject text-abstain -->
+<Layout title="Tansu" page="home">
+  <Container>
+    <ProjectList client:only="react" />
+  </Container>
+</Layout>

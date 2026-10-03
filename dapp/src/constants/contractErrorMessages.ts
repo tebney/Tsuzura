@@ -1,0 +1,75 @@
+// Contract error messages that mirror the bindings but provide user-friendly descriptions
+//
+// ⚠️  IMPORTANT: When bindings are updated, this file MUST be updated to match!
+//
+// VALIDATION:
+// - This file is automatically validated during linting: `bun run lint`
+// - Run validation manually: `bun run validate-errors`
+// - Pre-commit hooks will catch mismatches before commits
+// - CI/CD will fail if validation fails
+//
+// To validate the mapping is correct, call validateContractErrorMapping() during development.
+// This will catch any mismatches between bindings and constants.
+export const contractErrorMessages = {
+  // Generic (0-99)
+  0: "An unexpected error has occurred.",
+
+  // Authorization/Permission (100-199)
+  100: "The user is not a maintainer.",
+  101: "You are invalid voter.",
+  103: "Need a minimum of one maintainer",
+
+  // Validation (200-299)
+  200: "The provided key is invalid.",
+  201: "The project already exists.",
+  202: "Too many sub-projects. Maximum allowed is 10.",
+  203: "There was a validation issue with the proposal input.",
+  204: "The member does not exist. Please ensure the member address is correct and the member has been registered.",
+  205: "The member already exists.",
+  206: "The project name is invalid.",
+  207: "The voting type is wrong.",
+  208: "Bad commitment.",
+  209: "Invalid voter weight calculation.",
+  210: "Too many voters already.",
+  211: "Your address has a declared conflict of interest for this proposal.",
+  212: "Evidence must include a commit hash and CID.",
+  213: "The commit hash must be a 40-character (SHA-1) or 64-character (SHA-256) hex string.",
+  214: "The voting period or execute delay is invalid.",
+  215: "The attestation is invalid.",
+  216: "The finality threshold must be between 50 and 100.",
+  217: "You have already attested this — each maintainer may attest only once.",
+  218: "Too many maintainers. A project may have at most 25.",
+  219: "The maintainer list contains duplicate addresses.",
+  220: "This target has reached the maximum number of attestations.",
+  221: "You have no attestation to revoke on this target.",
+  222: "This target is already final — attestations can no longer be withdrawn.",
+  223: "The withdrawal window for this attestation has closed.",
+  224: "Badges must be Developer, Triage, Community or Verified.",
+  225: "The project URL, IPFS link or sub-projects are not valid.",
+
+  // State (300-399)
+  300: "No hash was found.",
+  301: "Proposal or page could not be found.",
+  302: "Project page could not be found.",
+  303: "This is not the anonymous voting config.",
+
+  // Execution/Timing (400-499)
+  400: "You have already voted.",
+  401: "The proposal is still in voting, so cannot be executed.",
+  402: "The proposal has already been executed.",
+  403: "There was an error executing outcome contracts.",
+  404: "Vote does not exist.",
+
+  // Voting/Cryptographic (500-599)
+  500: "There is a tally seed error.",
+  501: "The proof is invalid.",
+
+  // Contract/System (600-699)
+  600: "Contract is paused.",
+  601: "Contract upgrade error.",
+  602: "Contract validation error.",
+  603: "Collateral error.",
+
+  // Git Identity (700-799)
+  700: "Invalid Git identity. The signature could not be verified against the provided Git public key.",
+};

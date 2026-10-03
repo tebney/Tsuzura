@@ -1,0 +1,11 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Container from "../../components/layout/Container.astro";
+import ProjectPage from "../../components/page/project/ProjectPage";
+---
+
+<Layout title="Tansu" page="project">
+  <Container>
+    <ProjectPage client:only="react" />
+  </Container>
+</Layout>

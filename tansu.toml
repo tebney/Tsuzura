@@ -1,0 +1,16 @@
+VERSION = "2.0.0"
+
+ACCOUNTS = [
+    "GCMFQP44AR32S7IRIUKNOEJW5PNWOCLRHLQWSHUCSV4QZOMUXZOVA7Q2"
+]
+
+[DOCUMENTATION]
+ORG_DBA = "Tansu - Decentralized project governance on Stellar"
+ORG_NAME = "Consulting Manao GmbH"
+ORG_URL = "https://tansu.dev"
+ORG_LOGO = "https://radicle.consulting-manao.com/raw/rad:zssaAF91kxuquZmZCV2SiK2FNX6s/536993606237ef6890d202691dbfb3fbacf15c52/website/static/img/logo.svg"
+ORG_DESCRIPTION = "Bringing Git hashes onto Stellar’s blockchain"
+ORG_GITHUB = "https://radicle.network/nodes/radicle.consulting-manao.com/rad%3AzssaAF91kxuquZmZCV2SiK2FNX6s"
+
+[[PRINCIPALS]]
+github = "tupui"

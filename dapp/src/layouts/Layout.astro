@@ -1,0 +1,137 @@
+---
+import Navbar from "../components/layout/Navbar.astro";
+import Footer from "../components/layout/Footer.astro";
+import UpdatePrompt from "../components/layout/UpdatePrompt.astro";
+import ModalHost from "../components/ModalHost";
+import { ClientRouter } from "astro:transitions";
+import { SEO } from "astro-seo";
+
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  page: string;
+}
+
+const { title, page } = Astro.props;
+---
+
+<script>
+  import { Buffer } from "buffer";
+  import { openModal } from "../utils/modals";
+  import { termsAccepted } from "../utils/terms";
+
+  global.Buffer = Buffer;
+
+  document.addEventListener("astro:page-load", () => {
+    // The legal pages themselves, with or without the trailing slash.
+    if (/^\/(terms|privacy|impressum)\/?$/.test(window.location.pathname))
+      return;
+    if (!termsAccepted()) openModal("terms", {});
+  });
+</script>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Libraries written for Node read `global`: every page defines it
+         before any module runs, or the terms gate below would not start. -->
+    <script is:inline>
+      var global = global || window;
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <meta name="generator" content={Astro.generator} />
+
+    <link rel="preload" as="image" href="/logo.svg" />
+    <!-- Installed on iOS: a standalone app with Tansu's colors. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Tansu" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <ClientRouter />
+
+    <SEO
+      title={title}
+      description="Bringing open source communities onto the Stellar blockchain. Tansu enables decentralized project governance, transparent funding, and collaborative development on Stellar."
+      canonical={`https://testnet.tansu.dev${Astro.url.pathname}`}
+      openGraph={{
+        basic: {
+          title: title,
+          type: "website",
+          image: `https://testnet.tansu.dev/social-card.png`,
+          url: `https://testnet.tansu.dev${Astro.url.pathname}`,
+        },
+        image: {
+          width: 1000,
+          height: 563,
+          alt: "Tansu – Decentralized governance on Stellar",
+        },
+        optional: {
+          description:
+            "Bringing open source communities onto the Stellar blockchain. Tansu enables decentralized project governance, transparent funding, and collaborative development on Stellar.",
+          siteName: "Tansu",
+        },
+      }}
+      twitter={{
+        creator: "@PamphileRoy",
+        card: "summary_large_image",
+        image: `https://testnet.tansu.dev/social-card.png`,
+        imageAlt: "Tansu – Decentralized governance on Stellar",
+        title: title,
+        description:
+          "Bringing open source communities onto the Stellar blockchain",
+      }}
+      extend={{
+        // extending the default link tags
+        link: [
+          { rel: "icon", href: "/logo.svg" },
+          { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+          { rel: "manifest", href: "/manifest.json" },
+        ],
+        // extending the default meta tags
+        meta: [
+          { name: "author", content: "Tansu Team" },
+          {
+            name: "keywords",
+            content:
+              "stellar, blockchain, open source, decentralized, governance, funding, collaboration",
+          },
+          { name: "theme-color", content: "#311255" },
+          { name: "application-name", content: "Tansu" },
+        ],
+      }}
+    />
+
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json" is:inline>
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Tansu",
+        "url": "https://app.tansu.dev",
+        "description": "Bringing open source software development onto the Stellar blockchain. Tansu enables decentralized project governance, transparent funding, and collaborative development.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "creator": {
+          "@type": "Organization",
+          "name": "Tansu Team"
+        }
+      }
+    </script>
+  </head>
+  <body class="font-firacode min-h-screen flex flex-col">
+    <Navbar page={page} />
+    <main class="flex-grow flex flex-col">
+      <slot />
+    </main>
+    <Footer />
+    <UpdatePrompt />
+    <ModalHost client:only="react" />
+  </body>
+</html>

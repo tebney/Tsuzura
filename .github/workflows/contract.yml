@@ -1,0 +1,45 @@
+name: Test Contract
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    paths:
+      - 'contracts/**'
+
+  workflow_dispatch:
+#  schedule:
+#    - cron: "0 6 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: -C debuginfo=0 # Do not produce debug symbols to keep memory usage down
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: stellar/actions/rust-cache@f119d3f8ebd555a448ce63be0aeae625d1b310a1 # main
+
+      - run: rustup update
+
+      # soroban target
+      - run: rustup target add wasm32v1-none
+
+      # registry-tansu-manager imports this WASM with contractimport!
+      - run: cargo build --target wasm32v1-none --release --package tansu
+
+      - run: cargo build
+
+      - run: cargo test

@@ -1,0 +1,74 @@
+fail_fast: true
+
+repos:
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.24.1
+    hooks:
+      - id: zizmor
+        args: [ --fix=all , --config=.github/zizmor.yml ]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.15.11
+    hooks:
+      # Run the linter.
+      - id: ruff
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: clippy
+        name: Rust clippy
+        language: rust
+        files: ^contracts/
+        pass_filenames: false
+        entry: cargo clippy --all-targets --all-features -- -Dwarnings
+      - id: rustfmt
+        name: Rust formatting
+        language: rust
+        files: ^contracts/
+        pass_filenames: false
+        entry: cargo fmt --all
+      - id: dapp-prettier
+        name: dApp format
+        language: system
+        files: ^dapp/
+        pass_filenames: false
+        entry: bash -c "cd dapp && bun run format"
+      - id: dapp-lint
+        name: dApp lint
+        language: system
+        files: ^dapp/
+        pass_filenames: false
+        entry: bash -c "cd dapp && bun run lint"
+      - id: dapp-check
+        name: dApp astro check
+        language: system
+        files: ^dapp/
+        pass_filenames: false
+        entry: bash -c "cd dapp && bun run check"
+      - id: website
+        name: website format
+        language: system
+        files: ^website/
+        pass_filenames: false
+        entry: bash -c "cd website && bun run formatter"
+      - id: website-lint
+        name: website lint
+        language: system
+        files: ^website/
+        pass_filenames: false
+        entry: bash -c "cd website && bun linter"
+
+      # our custom action
+      - id: tansu
+        name: Send hash to Soroban contract before push
+        language: python
+        additional_dependencies:
+          - soroban
+        entry: python pre-commit/tansu_pre_push.py
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        stages:
+          - pre-push

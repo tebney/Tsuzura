@@ -1,0 +1,273 @@
+use soroban_sdk::{Address, Bytes, BytesN, String, Symbol, Val, Vec, contracttype};
+
+// Constants
+pub const TIMELOCK_DELAY: u64 = 24 * 3600; // 24 hours in seconds
+pub const DEFAULT_FINALITY_THRESHOLD_PERCENT: u32 = 66;
+pub const MIN_FINALITY_THRESHOLD_PERCENT: u32 = 50;
+pub const ATTESTATION_REVOCATION_WINDOW: u64 = 24 * 3600; // 24 hours in seconds
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractRef {
+    pub address: Address,
+    pub wasm_hash: Option<BytesN<32>>,
+}
+
+#[contracttype]
+pub enum ContractKey {
+    Collateral, // Collateral asset contract address, set at construction
+    Executor,   // Contract running the outcome calls of proposals
+}
+
+#[contracttype]
+pub enum DataKey {
+    Member(Address), // Member of the DAO, address
+    Paused,          // Contract pause state
+    UpgradeProposal, // Pending upgrade proposal
+    AdminsConfig,    // Admin configuration for upgrades and other admin operations
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Badges {
+    pub developer: Vec<Address>,
+    pub triage: Vec<Address>,
+    pub community: Vec<Address>,
+    pub verified: Vec<Address>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Badge {
+    Developer = 10_000_000,
+    Triage = 5_000_000,
+    Community = 1_000_000,
+    Verified = 500_000,
+    Default = 1,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProjectBadges {
+    pub project: Bytes,
+    pub badges: Vec<Badge>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Member {
+    pub projects: Vec<ProjectBadges>,
+    pub meta: String,
+    pub git_identity: Option<String>, // Git identity bound to this member (e.g. "github:alice")
+    pub git_pubkey: Option<BytesN<32>>, // Ed25519 public key registered on the Git account
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub enum ProposalStatus {
+    Active,
+    Approved,
+    Rejected,
+    Cancelled,
+    Malicious,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct OutcomeContract {
+    pub address: Address,
+    pub execute_fn: Symbol,
+    pub args: Vec<Val>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::large_enum_variant)]
+pub enum Vote {
+    PublicVote(PublicVote),
+    AnonymousVote(AnonymousVote),
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub enum VoteTallies {
+    PublicVote(Vec<u128>),
+    AnonymousVote(Vec<BytesN<96>>),
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub enum VoteChoice {
+    Approve,
+    Reject,
+    Abstain,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct PublicVote {
+    pub address: Address,
+    pub weight: u32,
+    pub vote_choice: VoteChoice,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct AnonymousVote {
+    pub address: Address,
+    pub weight: u32,
+    pub encrypted_seeds: Vec<String>,
+    pub encrypted_votes: Vec<String>,
+    pub commitments: Vec<BytesN<96>>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct VoteData {
+    pub voting_ends_at: u64,
+    pub public_voting: bool,
+    pub token_contract: Option<Address>,
+    pub votes: Vec<Vote>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct AnonymousVoteConfig {
+    pub vote_generator_point: BytesN<96>,
+    pub seed_generator_point: BytesN<96>,
+    pub public_key: String,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminsConfig {
+    pub threshold: u32,       // M-of-N threshold (e.g., 2 for 2-of-3)
+    pub admins: Vec<Address>, // List of authorized admins
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct UpgradeProposal {
+    pub wasm_hash: BytesN<32>,
+    pub executable_at: u64,
+    pub approvals: Vec<Address>,
+    pub admins_config: AdminsConfig,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Proposal {
+    pub id: u32,
+    pub title: String,
+    pub proposer: Address,
+    pub ipfs: String,
+    pub vote_data: VoteData,
+    pub status: ProposalStatus,
+    pub outcome_contracts: Option<Vec<OutcomeContract>>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Dao {
+    pub proposals: Vec<Proposal>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum EvidenceKind {
+    Sbom,
+    Cve,
+    Attestation,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Evidence {
+    pub cid: String,
+    pub created_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub enum ProjectKey {
+    Key(Bytes),                            // UUID of the project from keccak256(name)
+    Badges(Bytes),                         // badges of the project
+    LastHash(Bytes),                       // last hash of the project
+    Evidence(Bytes, String, EvidenceKind), // append-only evidence history for a commit and kind
+    Dao(Bytes, u32),                       // Proposal ids of a page, pagination
+    Proposal(Bytes, u32),                  // One proposal, by id
+    DaoTotalProposals(Bytes),
+    Voters(Bytes, u32),        // Voter addresses for proposal
+    Vote(Bytes, u32, Address), // Proposal vote keyed by voter
+    ProposalTallies(Bytes, u32),
+    AnonymousVoteConfig(Bytes),
+    ProjectKeys(u32),                    // List of project keys, pagination
+    TotalProjects,                       // Total number of projects
+    ConflictOfInterest(Bytes, u32),      // Addresses barred from voting on a proposal
+    MinVotingPeriod(Bytes),              // Per-project minimum voting period override (seconds)
+    ExecuteDelay(Bytes),                 // Per-project DAO execute timelock override (seconds)
+    ProposalExecuteDelay(Bytes, u32),    // Timelock snapshotted at proposal creation (seconds)
+    DefaultVotes(Bytes, u32),            // Number of weight-1 votes on a proposal
+    Nqg(Bytes),                          // Contract giving the project's voting weights
+    PendingGovernance(Bytes), // Loosening governance update waiting out its notice window
+    Attestation(BytesN<32>),  // keccak256 digest of (project_key, commit_hash, target)
+    AttestationFinalized(BytesN<32>), // ledger timestamp a target first reached finality
+    AttestationFinalityThreshold(Bytes), // Attestation finality threshold for the project
+    PendingAttestationThreshold(Bytes), // Lower threshold waiting out its notice window
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct PendingGovernance {
+    pub min_voting_period: Option<u64>, // None leaves the current value untouched
+    pub execute_delay: Option<u64>,     // None leaves the current value untouched
+    pub activates_at: u64,              // Ledger timestamp at which the update may be applied
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct PendingThreshold {
+    pub percent: u32,      // Lower attestation threshold, in percent
+    pub activates_at: u64, // Ledger timestamp from which it applies
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Config {
+    pub url: String,  // link to VCS
+    pub ipfs: String, // CID of the tansu.toml file with metadata
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Project {
+    pub name: String,
+    pub config: Config,
+    pub maintainers: Vec<Address>,
+    pub sub_projects: Option<Vec<Bytes>>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AttestationTarget {
+    Commit,
+    Evidence(EvidenceKind, String),
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Attestation {
+    pub attester: Address,
+    pub weight: u32,
+    pub created_at: u64,
+    pub note: Option<String>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct FinalityStatus {
+    pub attested: u32,
+    pub total: u32,
+    pub is_final: bool, // latched, or attested * 100 >= threshold * total
+    pub finalized_at: Option<u64>, // when the target first reached finality
+}

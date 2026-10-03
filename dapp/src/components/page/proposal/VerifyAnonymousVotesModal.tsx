@@ -1,0 +1,146 @@
+import Modal, { type ModalProps } from "components/utils/Modal";
+import Title from "components/utils/Title";
+import Step from "components/utils/Step";
+import Button from "components/utils/Button";
+import AnonymousTalliesDisplay from "./AnonymousTalliesDisplay";
+import InvalidBallots from "./InvalidBallots";
+import { useState } from "react";
+import {
+  computeAnonymousVotingData,
+  validateAnonymousKeyForProject,
+} from "utils/anonymousVoting";
+import type { DecodedVote, InvalidBallot } from "utils/anonymousVoting";
+import type { VoteStatus } from "types/proposal";
+import classNames from "classnames";
+
+interface Props extends ModalProps {
+  projectName: string;
+  proposalId: number;
+}
+
+const VerifyAnonymousVotesModal: React.FC<Props> = ({
+  projectName,
+  proposalId,
+  onClose,
+}) => {
+  const [step, setStep] = useState(1);
+  const [processingError, setProcessingError] = useState<string | null>(null);
+  const [voteStatus, setVoteStatus] = useState<VoteStatus | null>(null);
+  const [proofOk, setProofOk] = useState<boolean | null>(null);
+  const [proofErrorMessage, setProofErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [decodedVotes, setDecodedVotes] = useState<DecodedVote[]>([]);
+  const [tallies, setTallies] = useState<bigint[]>([]);
+  const [invalid, setInvalid] = useState<InvalidBallot[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleKeyUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsProcessing(true);
+    try {
+      const fileList = e.target.files;
+      if (!fileList || fileList.length === 0) return;
+      const file = fileList.item(0);
+      if (!file) return;
+      const txt = await file.text();
+      const parsed = JSON.parse(txt);
+      if (!parsed.privateKey) throw new Error("Invalid key file");
+      // Validate uploaded key against on-chain config (centralized helper)
+      await validateAnonymousKeyForProject(projectName, parsed.publicKey);
+      const data = await computeAnonymousVotingData(
+        projectName,
+        proposalId,
+        parsed.privateKey,
+        true,
+      );
+      setVoteStatus(data.voteStatus);
+      setProofOk(data.proofOk ?? null);
+      setProofErrorMessage(data.proofErrorMessage ?? null);
+      setDecodedVotes(data.decodedVotes);
+      setInvalid(data.invalid);
+      setTallies(data.tallies);
+      setProcessingError(null);
+      setStep(2);
+    } catch (err: any) {
+      setProcessingError(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      {step === 1 ? (
+        <div className="flex flex-col gap-6 sm:gap-[30px]">
+          <Step step={1} totalSteps={2} />
+
+          <Title
+            title="Upload anonymous key file"
+            description="The private key will be used locally to decrypt votes and verify the proof."
+          />
+
+          <div
+            className={classNames(
+              "border rounded-md",
+              processingError ? "border-red-500" : "border-zinc-700",
+              "p-3 sm:p-4 text-sm sm:text-base break-words",
+            )}
+          >
+            {isProcessing ? (
+              <div className="text-primary text-center sm:text-left">
+                Processing key file...
+              </div>
+            ) : (
+              <label className="cursor-pointer text-primary underline block text-center sm:text-left">
+                Choose key file
+                <input
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={handleKeyUpload}
+                />
+              </label>
+            )}
+          </div>
+
+          {processingError && (
+            <p className="text-red-500 text-xs sm:text-sm break-words">
+              {processingError}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-6 sm:gap-[30px]">
+          <Step step={2} totalSteps={2} />
+
+          <Title
+            title="Decrypted tallies"
+            description="Below are the tallies computed from decrypted votes."
+          />
+
+          <AnonymousTalliesDisplay
+            voteStatus={voteStatus || undefined}
+            decodedVotes={decodedVotes}
+            tallies={tallies}
+            proofOk={proofOk}
+            proofErrorMessage={proofErrorMessage}
+            exportFileNameBase={`${projectName.replace(
+              /[^a-z0-9_-]+/gi,
+              "-",
+            )}-proposal-${proposalId}-decoded-votes`}
+          />
+
+          <InvalidBallots invalid={invalid} />
+
+          <div className="flex justify-center sm:justify-end">
+            <Button type="secondary" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+export default VerifyAnonymousVotesModal;
